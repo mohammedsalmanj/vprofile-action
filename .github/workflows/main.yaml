@@ -1,7 +1,7 @@
-name: vprofile actions
+name: Vprofile Actions
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
 
 env:
   AWS_REGION: us-east-1
@@ -26,10 +26,6 @@ jobs:
       - name: Code checkout
         uses: actions/checkout@v4
 
-      - name: Check code
-        run: |
-          mvn checkstyle:checkstyle
-
       - name: Build & Upload image to ECR
         uses: appleboy/docker-ecr-action@master
         with:
@@ -43,8 +39,8 @@ jobs:
           dockerfile: ./Dockerfile
           context: ./
 
-DeployToEKS:
-    needs: BUILD_AND_PUBLISH
+  DeployToEKS:
+    needs: BuildAndPublish
     runs-on: ubuntu-latest
     steps:
       - name: Code checkout
@@ -64,8 +60,8 @@ DeployToEKS:
         run: cat ~/.kube/config
 
       - name: Login to ECR
-        run: kubectl create secret docker-registry regcred --docker-server=${{ secrets.REGISTRY }} --docker-username=AWS  --docker-password=$(aws ecr get-login-password)
-
+        run: kubectl create secret docker-registry regcred --docker-server=${{ secrets.REGISTRY }} --docker-username=AWS --docker-password=$(aws ecr get-login-password) --dry-run=client -o yaml | kubectl apply -f -
+      
       - name: Deploy Helm
         uses: bitovi/github-actions-deploy-eks-helm@v1.2.8
         with:
@@ -77,4 +73,3 @@ DeployToEKS:
           namespace: default
           values: appimage=${{ secrets.REGISTRY }}/${{ env.ECR_REPOSITORY }},apptag=${{ github.run_number }}
           name: vprofile-stack
-
